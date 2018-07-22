@@ -1,5 +1,7 @@
 # Ball-and-SoccerRegion-detection
-I have included the src file which includes different functions to detect the ball and different regions of a soccer field.
+The Region detection function file contains a function to detect regions of a soccer field using edge detection and boundedRect function. The input is raw coloe image and output are the points of the rectangle which bound inner Rectangle and D region of the soccer field.
+
+I have also included the src file which includes different functions to detect the ball and different regions of a soccer field.
 
 This project is divided into two tasks; Task1: Detect the ball and Task 2: detect the various regions of football field. All the above tasks are carried out in real-world scenario and not in simulation. Note: Since Darwin-OP were used, the images had poor quality (more noise) and lower resolution (minute/fine details were lost).
 
