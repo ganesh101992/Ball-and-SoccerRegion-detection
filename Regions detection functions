@@ -1,0 +1,120 @@
+vector< vector<Point> > drawField(Mat *image)
+{
+    vector< vector<Point> > regions;
+    region.clear();
+    int downsampled=0;
+    while(image->rows>400 && image->cols>400){
+        downsampled++;
+        //ROS_INFO("Downsample count = %d",downsampled);
+        GaussianBlur( *image, *image, Size( 3, 3 ), 0, 0);
+        pyrDown( *image, *image, Size( image->cols/2, image->rows/2 ) );
+    }
+
+    namedWindow("Thresholded using POG", WINDOW_NORMAL);
+    int nRows=image->rows;
+    int nCols=image->cols;
+    Mat thresholded=Mat::zeros(nRows, nCols, CV_8UC1);
+    int rw,cl;
+    uchar *p;
+    int thresholdForGreen=38;
+    createTrackbar("thresholdForGreen", "Thresholded using POG", &thresholdForGreen, 255, NULL);
+    for(rw=0;rw<nRows;rw++){
+        p = thresholded.ptr<uchar>(rw);
+        for(cl=0;cl<nCols;cl++){
+            Vec3b intensities = image->at<Vec3b>(rw,cl);
+            float percentOfGreen = (float) intensities.val[1]/(intensities.val[0]+intensities.val[1]+intensities.val[2]);
+            if((percentOfGreen*100)>thresholdForGreen){
+                p[cl]=0;
+            }
+            else
+            {
+                p[cl]=255;
+            }
+        }
+    }
+    imshow("Thresholded using POG",thresholded);
+
+
+    Mat dst;
+
+    Mat srcCanny;
+    Canny(thresholded, srcCanny, 100, 100 , 3, true);
+    vector<vector<Point> > contours;
+    vector<Vec4i> hierarchy;
+    findContours(srcCanny, contours, hierarchy, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
+    
+    vector<vector<Point> > filteredcontours;
+    for( int i = 0; i< contours.size(); i=hierarchy[i][0] ) // iterate through each contour.
+    {
+        Rect r= boundingRect(contours[i]);
+        if(hierarchy[i][2]>0) //Check if there is a child contour
+            if(r.width>20 && r.height>20) {
+                filteredcontours.push_back(contours[i]);
+            }//closed contour
+    }
+    
+    vector<vector<Point> > approx;
+    approx.resize(filteredcontours.size());
+    for (int k = 0; k < filteredcontours.size(); k++)
+        approxPolyDP(Mat(filteredcontours[k]), approx[k], 3, true);
+
+    for (int i = 0; i< approx.size(); i++)
+    {
+        if(approx[i].size()>=4 && approx[i].size()<=10)
+        {
+            RotatedRect rect;
+            rect=minAreaRect(approx[i]);
+            Point2f rect_points[4];
+            rect.points( rect_points );
+            Size2f hw;
+            hw=rect.size;
+            float w,h;
+            w=hw.width;
+            h=hw.height;
+            vector<Point> edges;
+
+            if(w>15.0 && h>15.0 && (w>35 || h>35))
+            if(w>h) {
+                float ratio=(float)w/h;
+                if(ratio>1.0 && ratio<3.0){
+                    region.push_back(0);
+                    for( int j = 0; j < 4; j++ )
+                        edges.push_back(rect_points[j]);
+                    regions.push_back(edges);
+                }
+                else if(ratio>4.0 && ratio<10.0){
+                    region.push_back(1);
+                    for( int j = 0; j < 4; j++ )
+                        edges.push_back(rect_points[j]);
+                    regions.push_back(edges);
+                }
+            }
+            else{
+                float ratio=(float)h/w;
+                if(ratio>1.0 && ratio<3.0){
+                    region.push_back(0);
+                    for( int j = 0; j < 4; j++ )
+                        edges.push_back(rect_points[j]);
+                    regions.push_back(edges);
+                }
+                else if(ratio>4.0 && ratio<10.0){
+                    region.push_back(1);
+                    for( int j = 0; j < 4; j++ )
+                        edges.push_back(rect_points[j]);
+                    regions.push_back(edges);
+                }
+
+            }
+            if((int)regions.size()==2)
+                break;
+        }
+    }
+
+    for(int i=0;i<regions.size();i++)
+        for(int j=0;j<regions[i].size();j++)
+        {
+            regions[i][j].x *= pow(2, downsampled);
+            regions[i][j].y *= pow(2, downsampled);
+        }
+    return regions;
+}
